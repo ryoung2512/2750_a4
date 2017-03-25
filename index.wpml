@@ -1,0 +1,3 @@
+.h(text="Login", size=1)
+.d()
+.i(action="choose.php", text="Please enter in your username", name="username", value="")

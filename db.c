@@ -10,13 +10,13 @@
 
 void checkArgs(int argc);
 void error(char * msg, MYSQL * con);
-void performAction(char * flag, MYSQL * con);
+void performAction(char * flag, MYSQL * con, char const *argv[]);
 
 void checkArgs(int argc)
 {
     if (argc < 2)
     {
-        printf("error: please only use 1 argument such as: ./db -clear\n");
+        printf("error: please make sure you have at least one argument: ./db -clear\n");
         exit(1);
     }
 }
@@ -28,7 +28,7 @@ void error(char * msg, MYSQL * con)
     exit(1);
 }
 
-void performAction(char * flag, MYSQL * con)
+void performAction(char * flag, MYSQL * con, char const *argv[])
 {
     MYSQL_RES * result;
     MYSQL_ROW row;
@@ -136,6 +136,155 @@ void performAction(char * flag, MYSQL * con)
         else
             while((row = mysql_fetch_row(result))) printf("%s\n", row[0]);
     }
+    else if (strcmp(flag, "-post") == 0)
+    {
+        char q[2000];
+        char username[80];
+        char stream[80];
+        char date[80];
+        char message[1000];
+
+        strcpy(username, "rhys");
+        strcpy(stream, "cows");
+        strcpy(date, "now");
+        strcpy(message, "hey this is a test");
+
+        sprintf(q, "SELECT * from users WHERE name='%s' and stream='%s'", username, stream);
+        if(mysql_query(con,q))
+        {
+            char err[80];
+            sprintf(err, "Failed to check if user had permission");
+            error(err, con);
+        }
+
+        result = mysql_store_result(con);
+        if (!result)
+            error("Failed to store result", con);
+
+        int rows = mysql_num_rows(result);
+        if (rows == 0)
+        {
+            printf("Error you do not have permission to post to that stream\n");
+        }
+        else
+        {
+            sprintf(q, "insert into posts values('%s', '%s', '%s', '%s')", username, date, message , stream);
+            if(mysql_query(con,q))
+            {
+                char err[80];
+                sprintf(err, "Failed to insert post");
+                error(err, con);
+            }
+            printf("The post has been submitted!\n");
+        }
+    }
+    else if (strcmp(flag, "-addauthor") == 0)
+    {
+        char q[80];
+        char username[80];
+        char stream[80];
+        strcpy(username, argv[2]);
+        strcpy(stream, argv[3]);
+        char * create[] = {
+            "create table if not exists users (name varchar(40), stream varchar(200), msg_read int)",
+            "create table if not exists posts (name varchar(40), date varchar(40), message varchar(255), stream varchar(40))",
+            "create table if not exists streams (name varchar(40))"  };
+
+        for (i = 0; i < 3; i++)
+        {
+            if(mysql_query(con,create[i]))
+            {
+                char err[80];
+                sprintf(err, "Could not create table");
+                error(err, con);
+            }
+        }
+
+        sprintf(q, "SELECT * FROM streams WHERE name='%s'", stream);
+        if(mysql_query(con,q))
+        {
+            char err[80];
+            sprintf(err, "Could not fetch streams");
+            error(err, con);
+        }
+
+        result = mysql_store_result(con);
+        if (!result)
+            error("Failed to store result", con);
+
+        int rows = mysql_num_rows(result);
+        if (rows == 0)
+        {
+            sprintf(q, "insert into streams values('%s')", stream);
+            if(mysql_query(con,q))
+            {
+                char err[80];
+                sprintf(err, "Could not fetch streams");
+                error(err, con);
+            }
+        }
+
+        /* make username a actual var */
+        sprintf(q, "SELECT * FROM users WHERE name='%s' and stream='%s'", username, stream);
+        if(mysql_query(con,q))
+        {
+            char err[80];
+            sprintf(err, "Could not fetch User");
+            error(err, con);
+        }
+
+        result = mysql_store_result(con);
+        if (!result) error("Failed to store result", con);
+
+        rows = mysql_num_rows(result);
+        if (rows == 0)
+        {
+            sprintf(q, "insert into users values ('%s', '%s', 0)", username, stream);
+            if(mysql_query(con,q))
+            {
+                char err[80];
+                sprintf(err, "Could not give user permission");
+                error(err, con);
+            }
+        }
+
+        printf("%s was succesfuly added to %s\n", username, stream);
+    }
+    else if (strcmp(flag, "-removeA") == 0)
+    {
+        char username[80];
+        char stream[80];
+        char q[200];
+        strcpy(username, argv[2]);
+        strcpy(stream, argv[3]);
+
+        sprintf(q, "SELECT * FROM users WHERE name='%s' and stream='%s'", username, stream);
+        if(mysql_query(con,q))
+        {
+            char err[80];
+            sprintf(err, "Could not fetch User");
+            error(err, con);
+        }
+
+        result = mysql_store_result(con);
+        if (!result) error("Failed to store result", con);
+
+        int rows = mysql_num_rows(result);
+        if (rows == 0)
+            printf("Error: could not remove %s from %s because they no record exists\n", username, stream);
+        else
+        {
+            sprintf(q, "DELETE FROM users WHERE name='%s' and stream='%s'", username, stream);
+            if(mysql_query(con,q))
+            {
+                char err[80];
+                sprintf(err, "Could not delete User");
+                error(err, con);
+            }
+            printf("%s was remove succesfuly from %s\n", username, stream);
+        }
+
+    }
     else if (strcmp(flag, "-help") == 0)
     {
         printf("Help:\n");
@@ -167,14 +316,12 @@ int main(int argc, char const *argv[]) {
         sprintf(err, "Error: unable to connect to %s", HOST);
         error(err, &connection);
     }
-    printf("Connected succesfuly to %s\n", HOST);
 
     char action[50];
     strcpy(action, argv[1]);
-    performAction(action, &connection);
+    performAction(action, &connection, argv);
 
     mysql_close(&connection);
-    printf("Closed connection\n");
 
     return 0;
 }
