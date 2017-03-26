@@ -136,6 +136,52 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
         else
             while((row = mysql_fetch_row(result))) printf("%s\n", row[0]);
     }
+    else if (strcmp(flag, "-lStreams") == 0)
+    {
+        char username[80], q[80];
+        strcpy(username, argv[2]);
+        sprintf(q, "SELECT * FROM users WHERE name='%s'", username);
+        if(mysql_query(con,q))
+        {
+            char err[80];
+            sprintf(err, "Error: users does not exist could not complete your operation");
+            error(err, con);
+        }
+
+        result = mysql_store_result(con);
+        if (!result) error("Failed to store result", con);
+
+        int rows = mysql_num_rows(result);
+        if (rows == 0)
+        {
+            printf("Sorry unable to find any groups for %s. Please add some using addauthor!\n", username);
+        }
+        else
+        {
+            printf("<form action=\"viewer.php\" method=\"post\">\n");
+            int first = 0;
+            while((row = mysql_fetch_row(result)))
+            {
+                if (first == 0)
+                {
+                    printf("%s: <input type=\"radio\" checked=\"checked\" name=\"stream\" value=\"%s\"/><br>\n", row[1], row[1]);
+                    first = 1;
+                }
+                else
+                {
+                    printf("%s: <input type=\"radio\" name=\"stream\" value=\"%s\"/><br>\n", row[1], row[1]);
+                }
+            }
+            printf("all: <input type=\"radio\" name=\"stream\" value=\"all\"/><br>\n");
+            printf("<input type=\"hidden\" name=\"username\" value=\"%s\"/>\n", username);
+            printf("<input type=\"hidden\" name=\"counter\" value=\"0\"/>\n");
+            printf("<input type=\"hidden\" name=\"sorted\" value=\"0\"/>\n");
+            printf("<input type=\"hidden\" name=\"name\" value=\"choose\"/>\n");
+            printf("<input type=\"submit\" value=\"choose\"/>\n");
+            printf("</form>\n");
+        }
+
+    }
     else if (strcmp(flag, "-post") == 0)
     {
         char q[2000];
@@ -144,22 +190,21 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
         char date[80];
         char message[1000];
 
-        strcpy(username, "rhys");
-        strcpy(stream, "cows");
-        strcpy(date, "now");
-        strcpy(message, "hey this is a test");
+        strcpy(username, argv[2]);
+        strcpy(stream, argv[3]);
+        strcpy(date, argv[4]);
+        strcpy(message, argv[5]);
 
         sprintf(q, "SELECT * from users WHERE name='%s' and stream='%s'", username, stream);
         if(mysql_query(con,q))
         {
             char err[80];
-            sprintf(err, "Failed to check if user had permission");
+            sprintf(err, "Error: stream does not exist could not complete your operation");
             error(err, con);
         }
 
         result = mysql_store_result(con);
-        if (!result)
-            error("Failed to store result", con);
+        if (!result) error("Failed to store result", con);
 
         int rows = mysql_num_rows(result);
         if (rows == 0)
@@ -246,9 +291,13 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
                 sprintf(err, "Could not give user permission");
                 error(err, con);
             }
+            printf("%s was succesfuly added to %s\n", username, stream);
+        }
+        else
+        {
+            printf("error: %s already in %s\n", username, stream);
         }
 
-        printf("%s was succesfuly added to %s\n", username, stream);
     }
     else if (strcmp(flag, "-removeA") == 0)
     {
@@ -271,7 +320,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
 
         int rows = mysql_num_rows(result);
         if (rows == 0)
-            printf("Error: could not remove %s from %s because they no record exists\n", username, stream);
+            printf("Error: could not remove %s from %s because no record exists\n", username, stream);
         else
         {
             sprintf(q, "DELETE FROM users WHERE name='%s' and stream='%s'", username, stream);
@@ -281,7 +330,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
                 sprintf(err, "Could not delete User");
                 error(err, con);
             }
-            printf("%s was remove succesfuly from %s\n", username, stream);
+            printf("%s was removed succesfuly from %s\n", username, stream);
         }
 
     }
