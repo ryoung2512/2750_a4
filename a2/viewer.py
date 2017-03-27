@@ -103,19 +103,10 @@ def displayMessages(read, unread, username, spot, sorted, limit, choice):
         print("Stream: " + messages[3] + "<br>")
         for message in messages[:-1]:
             print(message, end = "<br>")
-        if (sorted == False): #sets messages to read(only works in time sorted order)
+        if (sorted == False ): #sets messages to read(only works in time sorted order)
             readMessages = getRead(username, messages[3]) + 1
-            streams = []
-            out = subprocess.Popen(["./db", "-lPosts", username, messages[3], str(limit)], stdout=subprocess.PIPE)
-            for l in out.stdout:
-                line = l.decode("utf-8")
-                if line.startswith("Stream: "):
-                    stream = line[8:]
-                    streams.append(stream[:-1])
-            max_upper = 0
-            for key, value in Counter(streams).items():
-                max_upper = value
-            if readMessages < max_upper:
+            upper_limit = sum(row.count(message[3]) for row in all)
+            if readMessages <= upper_limit:
                 try:
                     subprocess.check_call(["./db", "-updateR", username, messages[3], str(readMessages)])
                 except subprocess.CalledProcessError:
