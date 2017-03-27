@@ -106,9 +106,9 @@ def displayMessages(read, unread, username, spot, sorted, limit, choice):
         for message in messages[:-1]:
             print(message, end = "<br>")
         if (sorted == False): #sets messages to read(only works in time sorted order)
-            readMessages = getRead(username, choice)
+            readMessages = getRead(username, choice) + 1
             try:
-                subprocess.check_call(["./db", "-updateR", username, messages[3], str(readMessages + 1))
+                subprocess.check_call(["./db", "-updateR", username, messages[3], str(readMessages)])
             except subprocess.CalledProcessError:
                 print("Error: executing your file go check it out")
             except OSError:
