@@ -136,6 +136,219 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
         else
             while((row = mysql_fetch_row(result))) printf("%s\n", row[0]);
     }
+    else if (strcmp(flag, "-updateR") == 0)
+    {
+        char username[80], stream[80], value[40], q[200];
+        strcpy(username, argv[2]);
+        strcpy(stream, argv[3]);
+        strcpy(value, argv[4]);
+
+        sprintf(q, "UPDATE users SET msg_read=%d WHERE name='%s' and stream='%s' and msg_read < %d", atoi(value), username, stream, atoi(value));
+        if(mysql_query(con,q))
+        {
+            char err[80];
+            sprintf(err, "Failed to update users");
+            error(err, con);
+        }
+
+    }
+    else if (strcmp(flag, "-fetchP") == 0)
+    {
+        char q[200], username[80], stream[80], count[40], limit[40];
+        strcpy(username, argv[2]);
+        strcpy(stream, argv[3]);
+        strcpy(count, argv[4]);
+        strcpy(limit, argv[5]);
+        if (strcmp(stream, "all") == 0)
+        {
+            char a[200];
+            sprintf(a, "SELECT * FROM users WHERE name='%s'", username);
+            if(mysql_query(con,a))
+            {
+                char err[80];
+                sprintf(err, "Could not fetch users from %s", tables[0]);
+                error(err, con);
+            }
+            result = mysql_store_result(con);
+            if (!result) error("Failed to store result", con);
+            int rows = mysql_num_rows(result);
+            i = 0;
+            sprintf(q, "SELECT * FROM posts WHERE ");
+            while((row = mysql_fetch_row(result)))
+            {
+                char temp[40];
+                sprintf(temp, " stream='%s'", row[1]);
+                strcat(q, temp);
+                if (i + 1 < rows)
+                    strcat(q, " or ");
+                i++;
+            }
+            char lim[40];
+            sprintf(lim, " LIMIT %d,%d", atoi(count), atoi(limit));
+            strcat(q, lim);
+        }
+        else
+            sprintf(q, "SELECT * FROM posts WHERE stream='%s' LIMIT %d,%d", stream, atoi(count) , atoi(limit));
+        if(mysql_query(con,q))
+        {
+            char err[80];
+            sprintf(err, "Could not fetch users from %s", tables[0]);
+            error(err, con);
+        }
+        result = mysql_store_result(con);
+        if (!result) error("Failed to store result", con);
+        int rows = mysql_num_rows(result);
+        if (rows > 0)
+        {
+            while((row = mysql_fetch_row(result)))
+            {
+                printf("Sender: %s\n", row[0]);
+                printf("Date: %s\n", row[1]);
+                printf("Message: %s\n", row[2]);
+                printf("%s\n", row[3]);
+            }
+        }
+    }
+    else if (strcmp(flag, "-getRead") == 0)
+    {
+        char username[80], stream[80], q[200];
+        strcpy(username, argv[2]);
+        strcpy(stream, argv[3]);
+        if (strcmp(stream, "all") == 0)
+            sprintf(q, "SELECT * FROM users WHERE name='%s'", username);
+        else
+            sprintf(q, "SELECT * FROM users WHERE name='%s' and stream='%s'", username, stream);
+        if(mysql_query(con,q))
+        {
+            char err[80];
+            sprintf(err, "Could not fetch users from %s", tables[0]);
+            error(err, con);
+        }
+        result = mysql_store_result(con);
+        if (!result) error("Failed to store result", con);
+        int rows = mysql_num_rows(result);
+        if (rows == 0)
+        {
+            printf("0");
+        }
+        else
+        {
+            int count = 0;
+            while((row = mysql_fetch_row(result)))
+            {
+                count += atoi(row[2]);
+            }
+            printf("%d", count);
+        }
+    }
+    else if (strcmp(flag, "-lPosts") == 0)
+    {
+        char username[80], stream[80], limit[30], q[200], a[200];
+        strcpy(username, argv[2]);
+        strcpy(stream, argv[3]);
+        strcpy(limit, argv[4]);
+
+        int l = atoi(limit);
+        if (strcmp(stream, "all") == 0)
+        {
+            sprintf(a, "SELECT * FROM users WHERE name='%s'", username);
+            if(mysql_query(con,a))
+            {
+                char err[80];
+                sprintf(err, "Could not fetch users from %s", tables[0]);
+                error(err, con);
+            }
+            result = mysql_store_result(con);
+            if (!result) error("Failed to store result", con);
+            int rows = mysql_num_rows(result);
+            i = 0;
+            sprintf(q, "SELECT * FROM posts WHERE ");
+            while((row = mysql_fetch_row(result)))
+            {
+                char temp[40];
+                sprintf(temp, " stream='%s'", row[1]);
+                strcat(q, temp);
+                if (i + 1 < rows)
+                    strcat(q, " or ");
+                i++;
+            }
+            char lim[40];
+            sprintf(lim, " LIMIT %d", l);
+            strcat(q, lim);
+        }
+        else
+        {
+            sprintf(q, "SELECT * FROM posts WHERE stream='%s' LIMIT %d", stream, l);
+        }
+
+        if(mysql_query(con,q))
+        {
+            char err[80];
+            sprintf(err, "Could not fetch users from %s", tables[0]);
+            error(err, con);
+        }
+        result = mysql_store_result(con);
+        if (!result) error("Failed to store result", con);
+        while((row = mysql_fetch_row(result)))
+        {
+            printf("Stream: %s\n", row[3]);
+            printf("Sender: %s\n", row[0]);
+            printf("Date: %s\n", row[1]);
+            printf("Message: %s\n", row[2]);
+        }
+    }
+    else if (strcmp(flag, "-pCount") == 0)
+    {
+        char username[80], stream[80], q[80];
+        int count = 0;
+        strcpy(username, argv[2]);
+        strcpy(stream, argv[3]);
+        if (strcmp(stream, "all") == 0)
+        {
+            sprintf(q, "SELECT * FROM users WHERE name='%s'", username);
+            if(mysql_query(con,q))
+            {
+                char err[80];
+                sprintf(err, "Could not fetch users from %s", tables[0]);
+                error(err, con);
+            }
+
+            result = mysql_store_result(con);
+            if (!result) error("Failed to store result", con);
+
+            while((row = mysql_fetch_row(result)))
+            {
+                sprintf(q, "SELECT * FROM posts WHERE stream='%s'", row[1]);
+                if(mysql_query(con,q))
+                {
+                    char err[80];
+                    sprintf(err, "Could not fetch posts from posts");
+                    error(err, con);
+                }
+                MYSQL_RES * r = mysql_store_result(con);
+                if (!r) error("Failed to store result", con);
+
+                int rows = mysql_num_rows(r);
+                count += rows;
+            }
+        }
+        else
+        {
+            sprintf(q, "SELECT * FROM posts WHERE stream='%s'", stream);
+            if(mysql_query(con,q))
+            {
+                char err[80];
+                sprintf(err, "Could not fetch posts from posts");
+                error(err, con);
+            }
+            result = mysql_store_result(con);
+            if (!result) error("Failed to store result", con);
+
+            int rows = mysql_num_rows(result);
+            count += rows;
+        }
+        printf("%d", count);
+    }
     else if (strcmp(flag, "-lStreams") == 0)
     {
         char username[80], q[80];
