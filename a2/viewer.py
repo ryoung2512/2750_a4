@@ -76,6 +76,13 @@ def getMessages(username, limit, choice):
     unread = results[1]
     return read,unread
 
+def countOccurences(all, search):
+    count = 0
+    for message in all:
+        if (message[3] == search)
+            count += 1
+    return count
+
 def displayMessages(read, unread, username, spot, sorted, limit, choice):
     """
      displays the messages for the world to see
@@ -105,7 +112,7 @@ def displayMessages(read, unread, username, spot, sorted, limit, choice):
             print(message, end = "<br>")
         if (sorted == False ): #sets messages to read(only works in time sorted order)
             readMessages = getRead(username, messages[3]) + 1
-            upper_limit = sum(row.count(message[3]) for row in all)
+            upper_limit = countOccurences(all, messages[3])
             print(upper_limit)
             if readMessages <= upper_limit:
                 try:
