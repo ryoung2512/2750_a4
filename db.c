@@ -357,7 +357,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
         if(mysql_query(con,q))
         {
             char err[80];
-            sprintf(err, "Error: users does not exist could not complete your operation");
+            sprintf(err, "Sorry unable to find any groups for %s. Please add some using addauthor!<br>", username);
             error(err, con);
         }
 
@@ -367,7 +367,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
         int rows = mysql_num_rows(result);
         if (rows == 0)
         {
-            printf("Sorry unable to find any groups for %s. Please add some using addauthor!\n", username);
+            printf("Sorry unable to find any groups for %s. Please add some using addauthor!<br>", username);
         }
         else
         {
