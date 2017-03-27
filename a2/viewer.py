@@ -53,9 +53,6 @@ def storeMessages(fileName, username, limit, choice):
         currentElement = ""
         currentMessage = []
         i += 1
-
-    print(read)
-    print(unread)
     return read, unread
 
 def sortList(list, type):
