@@ -11,12 +11,7 @@ def checkArgs(args):
     if args == 1:
         print("Please enter in a username with the arguement<br>")
         exit()
-
-def storeMessages(fileName, username, limit, choice):
-    """
-    stores the messages for a given user in a given stream and returns it as al ist
-    """
-    # call messages read to find how many are read
+def getRead(username, choice):
     ret = subprocess.Popen(["./db", "-getRead", username, choice], stdout=subprocess.PIPE)
     messagesRead = 0
     for k in ret.stdout:
@@ -25,6 +20,14 @@ def storeMessages(fileName, username, limit, choice):
            messagesRead += int(p)
         except ValueError:
            return
+    return messagesRead
+
+def storeMessages(fileName, username, limit, choice):
+    """
+    stores the messages for a given user in a given stream and returns it as al ist
+    """
+    # call messages read to find how many are read
+    messagesRead = getRead(username, choice)
     read = []
     unread = []
     byte = hitNewLine = 0
@@ -75,7 +78,7 @@ def getMessages(username, limit, choice):
     unread = results[1]
     return read,unread
 
-def displayMessages(read, unread, username, spot, sorted, limit):
+def displayMessages(read, unread, username, spot, sorted, limit, choice):
     """
      displays the messages for the world to see
     """
@@ -103,12 +106,18 @@ def displayMessages(read, unread, username, spot, sorted, limit):
         for message in messages[:-1]:
             print(message, end = "<br>")
         if (sorted == False): #sets messages to read(only works in time sorted order)
-            readNewMessage(messages[3], username, False, limit)
+            readMessages = getRead(username, choice)
+            try:
+                subprocess.check_call(["./db", "-updateR", username, messages[3], str(readMessages + 1))
+            except subprocess.CalledProcessError:
+                print("Error: executing your file go check it out")
+            except OSError:
+                print("Error: executable not found")
             count = 0
 
     return spot, count, lastspot
 
-def main(read, unread, choices, username, sorted, spot, limit):
+def main(read, unread, choices, username, sorted, spot, limit, choice):
     """
     the main method sets up curses and manages the rest of the program
     """
@@ -116,7 +125,7 @@ def main(read, unread, choices, username, sorted, spot, limit):
     lastchar =  lastspot = 0
     read = sortList(read, False)
     unread = sortList(unread, False)
-    spot, lastchar, lastspot = displayMessages(read, unread, username, spot, sorted, limit)
+    spot, lastchar, lastspot = displayMessages(read, unread, username, spot, sorted, limit, choice)
 
 if __name__ == "__main__":
     checkArgs(len(sys.argv))
@@ -136,6 +145,6 @@ if __name__ == "__main__":
         choices = []
         choices.append(choice)
         results = getMessages(username, limit, choice)
-    main(results[0], results[1], choice, username, sorted, spot, limit)
+    main(results[0], results[1], choice, username, sorted, spot, limit, choice)
     print("</body>")
     print("</html>")
