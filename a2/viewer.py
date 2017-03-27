@@ -79,7 +79,7 @@ def getMessages(username, limit, choice):
 def countOccurences(all, search):
     count = 0
     for message in all:
-        if (message[3] == search)
+        if (message[3] == search):
             count += 1
     return count
 
