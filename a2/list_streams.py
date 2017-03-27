@@ -18,6 +18,8 @@ if __name__ == "__main__":
     username = ' '.join(map(str, sys.argv))
     try:
         subprocess.check_call(["./db", "-lStreams", username])
+    except subprocess.CalledProcessError:
+        pass
     except OSError:
         print("Error: executable not found")
     print("</body>")
