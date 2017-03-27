@@ -106,6 +106,7 @@ def displayMessages(read, unread, username, spot, sorted, limit, choice):
         if (sorted == False ): #sets messages to read(only works in time sorted order)
             readMessages = getRead(username, messages[3]) + 1
             upper_limit = sum(row.count(message[3]) for row in all)
+            print(upper_limit)
             if readMessages <= upper_limit:
                 try:
                     subprocess.check_call(["./db", "-updateR", username, messages[3], str(readMessages)])
