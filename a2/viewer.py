@@ -43,7 +43,6 @@ def storeMessages(fileName, username, limit, choice):
                 else:
                     currentElement = currentElement + char
         # add message
-        currentMessage.append(fileName);
         if i >= messagesRead:
             unread.append(currentMessage)
         else:
@@ -52,6 +51,8 @@ def storeMessages(fileName, username, limit, choice):
         currentMessage = []
         i += 1
 
+    print(read)
+    print(unread)
     return read, unread
 
 def sortList(list, type):
@@ -62,7 +63,7 @@ def sortList(list, type):
     if type == True:
         list.sort(key=lambda author : author[0])
     else: #false for time
-        list.sort(key=lambda date : datetime.strptime(date[1].split(": ")[1], "%b. %d, %Y %I:%M %p\n"))
+        list.sort(key=lambda date : datetime.strptime(date[1].split(": ")[1], "%b. %d, %Y %I:%M %p"))
     return list
 
 def getMessages(username, limit, choice):
@@ -89,7 +90,6 @@ def displayMessages(read, unread, username, spot, sorted, limit):
         all = newRead + newUnread
     startRead = len(read)
 
-    #### PROBLEM IS HERE M8
     if spot == 0 and startRead != len(all):
         spot = startRead
 
