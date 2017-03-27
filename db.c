@@ -24,7 +24,7 @@ void checkArgs(int argc)
 /* standard error message from his example */
 void error(char * msg, MYSQL * con)
 {
-    printf("%s\n%s\n", msg, mysql_error(con));
+    printf("%s<br>%s<br>", msg, mysql_error(con));
     exit(1);
 }
 
@@ -357,7 +357,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
         if(mysql_query(con,q))
         {
             char err[80];
-            sprintf(err, "Sorry unable to find any groups for %s. Please add some using addauthor!<br>", username);
+            sprintf(err, "Sorry unable to find any groups for %s. Please add some using addauthor!", username);
             error(err, con);
         }
 
