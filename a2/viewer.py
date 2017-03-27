@@ -3,6 +3,7 @@ import os, sys
 import curses
 from datetime import datetime
 import subprocess
+from collections import Counter
 
 def checkArgs(args):
     """
@@ -104,12 +105,23 @@ def displayMessages(read, unread, username, spot, sorted, limit, choice):
             print(message, end = "<br>")
         if (sorted == False): #sets messages to read(only works in time sorted order)
             readMessages = getRead(username, messages[3]) + 1
-            try:
-                subprocess.check_call(["./db", "-updateR", username, messages[3], str(readMessages)])
-            except subprocess.CalledProcessError:
-                print("Error: executing your file go check it out")
-            except OSError:
-                print("Error: executable not found")
+            streams = []
+            out = subprocess.Popen(["./db", "-lPosts", username, messages[3], str(limit)], stdout=subprocess.PIPE)
+            for l in out.stdout:
+                line = l.decode("utf-8")
+                if line.startswith("Stream: "):
+                    stream = line[8:]
+                    streams.append(stream[:-1])
+            max_upper = 0
+            for key, value in Counter(streams).items():
+                max_upper = value
+            if readMessages < max_upper:
+                try:
+                    subprocess.check_call(["./db", "-updateR", username, messages[3], str(readMessages)])
+                except subprocess.CalledProcessError:
+                    print("Error: executing your file go check it out")
+                except OSError:
+                    print("Error: executable not found")
             count = 0
 
     return spot, count, lastspot
