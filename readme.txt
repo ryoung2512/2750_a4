@@ -6,12 +6,11 @@ March 31st, 2017
 Description:
 This program is used to write and read streams. It also has a basic priviledge
 system so that if you are not a user in the stream it will not let you post to it
-or read from it. It is written in c lite, c, python and php.
+or read from it. It is written in c lite, c, python,, php and SQL.
 
 How to use:
-1. Make sure you are in the main project folder (a3)
-2. Run this command in terminal: make
-3. Go to your web browser and follow the on screen instructions
+1. Untar in the directory you want and run make
+2. Go to your web browser and follow the on screen instructions
 
 Explanation of buttons:
 Previous post: goes to the previous post
@@ -24,13 +23,9 @@ Add or remove author: lets you add or remove an author
 Post new message: lets you post a new message
 Next post: loads the next post in the stream and displays it.
 
-TO RUN PARSER:
-4. while in a3 folder invoke parser with ./parser <file>
-
-Added functionality:
-.k - add author
-.c - add post
-.T - text area
+TO RUN DB:
+3. while in folder invoke the DB with ./db <command>
+   NOTE: use ./db -help for help.
 
 Test Plan:
 For testing the program I extensively tested the different inputs that could be used in the files

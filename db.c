@@ -9,8 +9,8 @@
 #define DB "ryoung08"
 
 void checkArgs(int argc);
-void error(char * msg, MYSQL * con);
-void performAction(char * flag, MYSQL * con, char const *argv[]);
+void error(char * msg, MYSQL * con, int type);
+void performAction(char * flag, MYSQL * con, char const *argv[], int argc);
 
 void checkArgs(int argc)
 {
@@ -21,14 +21,18 @@ void checkArgs(int argc)
     }
 }
 
-/* standard error message from his example */
-void error(char * msg, MYSQL * con)
+/* standard error message from dr calvert's example */
+void error(char * msg, MYSQL * con, int type)
 {
-    printf("%s<br>%s<br>", msg, mysql_error(con));
+    if (type == 0)
+        printf("%s\n%s\n", msg, mysql_error(con));
+    else
+        printf("%s<br>%s<br>", msg, mysql_error(con));
     exit(1);
 }
 
-void performAction(char * flag, MYSQL * con, char const *argv[])
+/* main function that chooses the action and performs it */
+void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
 {
     MYSQL_RES * result;
     MYSQL_ROW row;
@@ -37,6 +41,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
     int i;
     char * tables[] = {"users", "posts", "streams"};
 
+    /* clears the tables */
     if (strcmp(flag, "-clear") == 0)
     {
         for (i = 0; i < 3; i++)
@@ -47,11 +52,11 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
             {
                 char err[80];
                 sprintf(err, "Could not empty table %s", tables[i]);
-                error(err, con);
+                error(err, con, 0);
             }
         }
         printf("Tables have been cleared\n");
-    }
+    } /* deletes the tables */
     else if (strcmp(flag, "-reset") == 0)
     {
         for (i = 0; i < 3; i++)
@@ -62,11 +67,11 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
             {
                 char err[80];
                 sprintf(err, "Could not drop table %s", tables[i]);
-                error(err, con);
+                error(err, con, 0);
             }
         }
         printf("Tables have been dropped\n");
-    }
+    } /* prints out posts */
     else if (strcmp(flag, "-posts") == 0)
     {
         char q[80];
@@ -76,36 +81,42 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
         {
             char err[80];
             sprintf(err, "Could not fetch users from %s", tables[0]);
-            error(err, con);
+            error(err, con, 0);
         }
 
         result = mysql_store_result(con);
         if (!result)
-            error("Failed to store result", con);
+            error("Failed to store result", con, 0);
 
-        while((row = mysql_fetch_row(result)))
+        int rows = mysql_num_rows(result);
+        if (rows == 0)
+            printf("There are no posts to display\n");
+        else
         {
-            printf("Stream: %s\n", row[3]);
-            printf("Sender: %s\n", row[0]);
-            printf("Date: %s\n", row[1]);
-            printf("Message: %s\n", row[2]);
+            while((row = mysql_fetch_row(result)))
+            {
+                printf("Stream: %s\n", row[3]);
+                printf("Sender: %s\n", row[0]);
+                printf("Date: %s\n", row[1]);
+                printf("Message: %s\n\n", row[2]);
+            }
         }
-    }
+    } /* prints out users */
     else if (strcmp(flag, "-users") == 0)
     {
         char q[80];
-        sprintf(q, "SELECT * FROM %s", tables[0]);
+        sprintf(q, "SELECT DISTINCT name FROM %s", tables[0]);
 
         if(mysql_query(con,q))
         {
             char err[80];
             sprintf(err, "Could not fetch users from %s", tables[0]);
-            error(err, con);
+            error(err, con, 0);
         }
 
         result = mysql_store_result(con);
         if (!result)
-            error("Failed to store result", con);
+            error("Failed to store result", con, 0);
 
         int rows = mysql_num_rows(result);
         if (rows == 0)
@@ -113,7 +124,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
         else
             while((row = mysql_fetch_row(result))) printf("%s\n", row[0]);
 
-    }
+    } /*prints out streams */
     else if (strcmp(flag, "-streams") == 0)
     {
         char q[80];
@@ -123,12 +134,12 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
         {
             char err[80];
             sprintf(err, "Could not fetch users from %s", tables[0]);
-            error(err, con);
+            error(err, con, 0);
         }
 
         result = mysql_store_result(con);
         if (!result)
-            error("Failed to store result", con);
+            error("Failed to store result", con, 0);
 
         int rows = mysql_num_rows(result);
         if (rows == 0)
@@ -138,412 +149,473 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
     }
     else if (strcmp(flag, "-updateR") == 0)
     {
-        char username[80], stream[80], value[40], q[200];
-        strcpy(username, argv[2]);
-        strcpy(stream, argv[3]);
-        strcpy(value, argv[4]);
-
-        sprintf(q, "UPDATE users SET msg_read=%d WHERE name='%s' and stream='%s' and msg_read < %d", atoi(value), username, stream, atoi(value));
-        if(mysql_query(con,q))
+        if (argc != 5)
         {
-            char err[80];
-            sprintf(err, "Failed to update users");
-            error(err, con);
+            printf("Sorry incorrect number of arguments\n");
         }
+        else
+        {
+            char username[80], stream[80], value[40], q[200];
+            strcpy(username, argv[2]);
+            strcpy(stream, argv[3]);
+            strcpy(value, argv[4]);
 
+            sprintf(q, "UPDATE users SET msg_read=%d WHERE name='%s' and stream='%s' and msg_read < %d", atoi(value), username, stream, atoi(value));
+            if(mysql_query(con,q))
+            {
+                char err[80];
+                sprintf(err, "Failed to update users");
+                error(err, con, 1);
+            }
+        }
     }
     else if (strcmp(flag, "-fetchP") == 0)
     {
-        char q[200], username[80], stream[80], count[40], limit[40];
-        strcpy(username, argv[2]);
-        strcpy(stream, argv[3]);
-        strcpy(count, argv[4]);
-        strcpy(limit, argv[5]);
-        if (strcmp(stream, "all") == 0)
+        if (argc != 6)
         {
-            char a[200];
-            sprintf(a, "SELECT * FROM users WHERE name='%s'", username);
-            if(mysql_query(con,a))
+            printf("Sorry incorrect number of arguments\n");
+        }
+        else
+        {
+            char q[200], username[80], stream[80], count[40], limit[40];
+            strcpy(username, argv[2]);
+            strcpy(stream, argv[3]);
+            strcpy(count, argv[4]);
+            strcpy(limit, argv[5]);
+            if (strcmp(stream, "all") == 0)
+            {
+                char a[200];
+                sprintf(a, "SELECT * FROM users WHERE name='%s'", username);
+                if(mysql_query(con,a))
+                {
+                    char err[80];
+                    sprintf(err, "Could not fetch users from %s", tables[0]);
+                    error(err, con, 1);
+                }
+                result = mysql_store_result(con);
+                if (!result) error("Failed to store result", con, 1);
+                int rows = mysql_num_rows(result);
+                i = 0;
+                sprintf(q, "SELECT * FROM posts WHERE ");
+                while((row = mysql_fetch_row(result)))
+                {
+                    char temp[40];
+                    sprintf(temp, " stream='%s'", row[1]);
+                    strcat(q, temp);
+                    if (i + 1 < rows)
+                        strcat(q, " or ");
+                    i++;
+                }
+                char lim[40];
+                sprintf(lim, " LIMIT %d,%d", atoi(count), atoi(limit));
+                strcat(q, lim);
+            }
+            else
+                sprintf(q, "SELECT * FROM posts WHERE stream='%s' LIMIT %d,%d", stream, atoi(count) , atoi(limit));
+            if(mysql_query(con,q))
             {
                 char err[80];
                 sprintf(err, "Could not fetch users from %s", tables[0]);
-                error(err, con);
+                error(err, con, 1);
             }
             result = mysql_store_result(con);
-            if (!result) error("Failed to store result", con);
+            if (!result) error("Failed to store result", con, 1);
             int rows = mysql_num_rows(result);
-            i = 0;
-            sprintf(q, "SELECT * FROM posts WHERE ");
-            while((row = mysql_fetch_row(result)))
+            if (rows > 0)
             {
-                char temp[40];
-                sprintf(temp, " stream='%s'", row[1]);
-                strcat(q, temp);
-                if (i + 1 < rows)
-                    strcat(q, " or ");
-                i++;
-            }
-            char lim[40];
-            sprintf(lim, " LIMIT %d,%d", atoi(count), atoi(limit));
-            strcat(q, lim);
-        }
-        else
-            sprintf(q, "SELECT * FROM posts WHERE stream='%s' LIMIT %d,%d", stream, atoi(count) , atoi(limit));
-        if(mysql_query(con,q))
-        {
-            char err[80];
-            sprintf(err, "Could not fetch users from %s", tables[0]);
-            error(err, con);
-        }
-        result = mysql_store_result(con);
-        if (!result) error("Failed to store result", con);
-        int rows = mysql_num_rows(result);
-        if (rows > 0)
-        {
-            while((row = mysql_fetch_row(result)))
-            {
-                printf("Sender: %s\n", row[0]);
-                printf("Date: %s\n", row[1]);
-                printf("Message: %s\n", row[2]);
-                printf("%s\n", row[3]);
+                while((row = mysql_fetch_row(result)))
+                {
+                    printf("Sender: %s\n", row[0]);
+                    printf("Date: %s\n", row[1]);
+                    printf("Message: %s\n", row[2]);
+                    printf("%s\n", row[3]);
+                }
             }
         }
     }
     else if (strcmp(flag, "-getRead") == 0)
     {
-        char username[80], stream[80], q[200];
-        strcpy(username, argv[2]);
-        strcpy(stream, argv[3]);
-        if (strcmp(stream, "all") == 0)
-            sprintf(q, "SELECT * FROM users WHERE name='%s'", username);
-        else
-            sprintf(q, "SELECT * FROM users WHERE name='%s' and stream='%s'", username, stream);
-        if(mysql_query(con,q))
+        if (argc != 4)
         {
-            char err[80];
-            sprintf(err, "Could not fetch users from %s", tables[0]);
-            error(err, con);
-        }
-        result = mysql_store_result(con);
-        if (!result) error("Failed to store result", con);
-        int rows = mysql_num_rows(result);
-        if (rows == 0)
-        {
-            printf("0");
+            printf("Sorry incorrect number of arguments\n");
         }
         else
         {
-            int count = 0;
-            while((row = mysql_fetch_row(result)))
+            char username[80], stream[80], q[200];
+            strcpy(username, argv[2]);
+            strcpy(stream, argv[3]);
+            if (strcmp(stream, "all") == 0)
+                sprintf(q, "SELECT * FROM users WHERE name='%s'", username);
+            else
+                sprintf(q, "SELECT * FROM users WHERE name='%s' and stream='%s'", username, stream);
+            if(mysql_query(con,q))
             {
-                count += atoi(row[2]);
+                char err[80];
+                sprintf(err, "Could not fetch users from %s", tables[0]);
+                error(err, con, 1);
             }
-            printf("%d", count);
+            result = mysql_store_result(con);
+            if (!result) error("Failed to store result", con, 1);
+            int rows = mysql_num_rows(result);
+            if (rows == 0)
+            {
+                printf("0");
+            }
+            else
+            {
+                int count = 0;
+                while((row = mysql_fetch_row(result)))
+                {
+                    count += atoi(row[2]);
+                }
+                printf("%d", count);
+            }
         }
     }
     else if (strcmp(flag, "-lPosts") == 0)
     {
-        char username[80], stream[80], limit[30], q[200], a[200];
-        strcpy(username, argv[2]);
-        strcpy(stream, argv[3]);
-        strcpy(limit, argv[4]);
-
-        int l = atoi(limit);
-        if (strcmp(stream, "all") == 0)
+        if (argc != 5)
         {
-            sprintf(a, "SELECT * FROM users WHERE name='%s'", username);
-            if(mysql_query(con,a))
-            {
-                char err[80];
-                sprintf(err, "Could not fetch users from %s", tables[0]);
-                error(err, con);
-            }
-            result = mysql_store_result(con);
-            if (!result) error("Failed to store result", con);
-            int rows = mysql_num_rows(result);
-            i = 0;
-            sprintf(q, "SELECT * FROM posts WHERE ");
-            while((row = mysql_fetch_row(result)))
-            {
-                char temp[40];
-                sprintf(temp, " stream='%s'", row[1]);
-                strcat(q, temp);
-                if (i + 1 < rows)
-                    strcat(q, " or ");
-                i++;
-            }
-            char lim[40];
-            sprintf(lim, " LIMIT %d", l);
-            strcat(q, lim);
+            printf("Sorry incorrect number of arguments\n");
         }
         else
         {
-            sprintf(q, "SELECT * FROM posts WHERE stream='%s' LIMIT %d", stream, l);
-        }
+            char username[80], stream[80], limit[30], q[200], a[200];
+            strcpy(username, argv[2]);
+            strcpy(stream, argv[3]);
+            strcpy(limit, argv[4]);
 
-        if(mysql_query(con,q))
-        {
-            char err[80];
-            sprintf(err, "Could not fetch users from %s", tables[0]);
-            error(err, con);
-        }
-        result = mysql_store_result(con);
-        if (!result) error("Failed to store result", con);
-        while((row = mysql_fetch_row(result)))
-        {
-            printf("Stream: %s\n", row[3]);
-            printf("Sender: %s\n", row[0]);
-            printf("Date: %s\n", row[1]);
-            printf("Message: %s\n", row[2]);
+            int l = atoi(limit);
+            if (strcmp(stream, "all") == 0)
+            {
+                sprintf(a, "SELECT * FROM users WHERE name='%s'", username);
+                if(mysql_query(con,a))
+                {
+                    char err[80];
+                    sprintf(err, "Could not fetch users from %s", tables[0]);
+                    error(err, con, 1);
+                }
+                result = mysql_store_result(con);
+                if (!result) error("Failed to store result", con, 1);
+                int rows = mysql_num_rows(result);
+                i = 0;
+                sprintf(q, "SELECT * FROM posts WHERE ");
+                while((row = mysql_fetch_row(result)))
+                {
+                    char temp[40];
+                    sprintf(temp, " stream='%s'", row[1]);
+                    strcat(q, temp);
+                    if (i + 1 < rows)
+                        strcat(q, " or ");
+                    i++;
+                }
+                char lim[40];
+                sprintf(lim, " LIMIT %d", l);
+                strcat(q, lim);
+            }
+            else
+            {
+                sprintf(q, "SELECT * FROM posts WHERE stream='%s' LIMIT %d", stream, l);
+            }
+
+            if(mysql_query(con,q))
+            {
+                char err[80];
+                sprintf(err, "Could not fetch users from %s", tables[0]);
+                error(err, con, 1);
+            }
+            result = mysql_store_result(con);
+            if (!result) error("Failed to store result", con, 1);
+            while((row = mysql_fetch_row(result)))
+            {
+                printf("Stream: %s\n", row[3]);
+                printf("Sender: %s\n", row[0]);
+                printf("Date: %s\n", row[1]);
+                printf("Message: %s\n", row[2]);
+            }
         }
     }
     else if (strcmp(flag, "-pCount") == 0)
     {
-        char username[80], stream[80], q[80];
-        int count = 0;
-        strcpy(username, argv[2]);
-        strcpy(stream, argv[3]);
-        if (strcmp(stream, "all") == 0)
+        if (argc != 4)
         {
-            sprintf(q, "SELECT * FROM users WHERE name='%s'", username);
-            if(mysql_query(con,q))
+            printf("Sorry incorrect number of arguments\n");
+        }
+        else
+        {
+            char username[80], stream[80], q[80];
+            int count = 0;
+            strcpy(username, argv[2]);
+            strcpy(stream, argv[3]);
+            if (strcmp(stream, "all") == 0)
             {
-                char err[80];
-                sprintf(err, "Could not fetch users from %s", tables[0]);
-                error(err, con);
+                sprintf(q, "SELECT * FROM users WHERE name='%s'", username);
+                if(mysql_query(con,q))
+                {
+                    char err[80];
+                    sprintf(err, "Could not fetch users from %s", tables[0]);
+                    error(err, con, 1);
+                }
+
+                result = mysql_store_result(con);
+                if (!result) error("Failed to store result", con, 1);
+
+                while((row = mysql_fetch_row(result)))
+                {
+                    sprintf(q, "SELECT * FROM posts WHERE stream='%s'", row[1]);
+                    if(mysql_query(con,q))
+                    {
+                        char err[80];
+                        sprintf(err, "Could not fetch posts from posts");
+                        error(err, con, 1);
+                    }
+                    MYSQL_RES * r = mysql_store_result(con);
+                    if (!r) error("Failed to store result", con, 1);
+
+                    int rows = mysql_num_rows(r);
+                    count += rows;
+                }
             }
-
-            result = mysql_store_result(con);
-            if (!result) error("Failed to store result", con);
-
-            while((row = mysql_fetch_row(result)))
+            else
             {
-                sprintf(q, "SELECT * FROM posts WHERE stream='%s'", row[1]);
+                sprintf(q, "SELECT * FROM posts WHERE stream='%s'", stream);
                 if(mysql_query(con,q))
                 {
                     char err[80];
                     sprintf(err, "Could not fetch posts from posts");
-                    error(err, con);
+                    error(err, con, 1);
                 }
-                MYSQL_RES * r = mysql_store_result(con);
-                if (!r) error("Failed to store result", con);
+                result = mysql_store_result(con);
+                if (!result) error("Failed to store result", con, 1);
 
-                int rows = mysql_num_rows(r);
+                int rows = mysql_num_rows(result);
                 count += rows;
             }
+            printf("%d", count);
         }
-        else
-        {
-            sprintf(q, "SELECT * FROM posts WHERE stream='%s'", stream);
-            if(mysql_query(con,q))
-            {
-                char err[80];
-                sprintf(err, "Could not fetch posts from posts");
-                error(err, con);
-            }
-            result = mysql_store_result(con);
-            if (!result) error("Failed to store result", con);
-
-            int rows = mysql_num_rows(result);
-            count += rows;
-        }
-        printf("%d", count);
     }
     else if (strcmp(flag, "-lStreams") == 0)
     {
-        char username[80], q[80];
-        strcpy(username, argv[2]);
-        sprintf(q, "SELECT * FROM users WHERE name='%s'", username);
-        if(mysql_query(con,q))
+        if (argc != 3)
         {
-            char err[80];
-            sprintf(err, "Sorry unable to find any groups for %s. Please add some using addauthor!", username);
-            error(err, con);
-        }
-
-        result = mysql_store_result(con);
-        if (!result) error("Failed to store result", con);
-
-        int rows = mysql_num_rows(result);
-        if (rows == 0)
-        {
-            printf("Sorry unable to find any groups for %s. Please add some using addauthor!<br>", username);
+            printf("Sorry incorrect number of arguments\n");
         }
         else
         {
-            printf("<form action=\"viewer.php\" method=\"post\">\n");
-            int first = 0;
-            while((row = mysql_fetch_row(result)))
-            {
-                if (first == 0)
-                {
-                    printf("%s: <input type=\"radio\" checked=\"checked\" name=\"stream\" value=\"%s\"/><br>\n", row[1], row[1]);
-                    first = 1;
-                }
-                else
-                {
-                    printf("%s: <input type=\"radio\" name=\"stream\" value=\"%s\"/><br>\n", row[1], row[1]);
-                }
-            }
-            printf("all: <input type=\"radio\" name=\"stream\" value=\"all\"/><br>\n");
-            printf("<input type=\"hidden\" name=\"username\" value=\"%s\"/>\n", username);
-            printf("<input type=\"hidden\" name=\"counter\" value=\"0\"/>\n");
-            printf("<input type=\"hidden\" name=\"sorted\" value=\"0\"/>\n");
-            printf("<input type=\"hidden\" name=\"name\" value=\"choose\"/>\n");
-            printf("<input type=\"submit\" value=\"choose\"/>\n");
-            printf("</form>\n");
-        }
-
-    }
-    else if (strcmp(flag, "-post") == 0)
-    {
-        char q[2000];
-        char username[80];
-        char stream[80];
-        char date[80];
-        char message[1000];
-
-        strcpy(username, argv[2]);
-        strcpy(stream, argv[3]);
-        strcpy(date, argv[4]);
-        strcpy(message, argv[5]);
-
-        sprintf(q, "SELECT * from users WHERE name='%s' and stream='%s'", username, stream);
-        if(mysql_query(con,q))
-        {
-            char err[80];
-            sprintf(err, "Error: stream does not exist could not complete your operation");
-            error(err, con);
-        }
-
-        result = mysql_store_result(con);
-        if (!result) error("Failed to store result", con);
-
-        int rows = mysql_num_rows(result);
-        if (rows == 0)
-        {
-            printf("Error you do not have permission to post to that stream\n");
-        }
-        else
-        {
-            sprintf(q, "insert into posts values('%s', '%s', '%s', '%s')", username, date, message , stream);
+            char username[80], q[80];
+            strcpy(username, argv[2]);
+            sprintf(q, "SELECT * FROM users WHERE name='%s'", username);
             if(mysql_query(con,q))
             {
                 char err[80];
-                sprintf(err, "Failed to insert post");
-                error(err, con);
+                sprintf(err, "Sorry unable to find any groups for %s. Please add some using addauthor!", username);
+                error(err, con, 1);
             }
-            printf("The post has been submitted!\n");
+
+            result = mysql_store_result(con);
+            if (!result) error("Failed to store result", con, 1);
+
+            int rows = mysql_num_rows(result);
+            if (rows == 0)
+            {
+                printf("Sorry unable to find any groups for %s. Please add some using addauthor!<br>", username);
+            }
+            else
+            {
+                printf("<form action=\"viewer.php\" method=\"post\">\n");
+                int first = 0;
+                while((row = mysql_fetch_row(result)))
+                {
+                    if (first == 0)
+                    {
+                        printf("%s: <input type=\"radio\" checked=\"checked\" name=\"stream\" value=\"%s\"/><br>\n", row[1], row[1]);
+                        first = 1;
+                    }
+                    else
+                    {
+                        printf("%s: <input type=\"radio\" name=\"stream\" value=\"%s\"/><br>\n", row[1], row[1]);
+                    }
+                }
+                printf("all: <input type=\"radio\" name=\"stream\" value=\"all\"/><br>\n");
+                printf("<input type=\"hidden\" name=\"username\" value=\"%s\"/>\n", username);
+                printf("<input type=\"hidden\" name=\"counter\" value=\"0\"/>\n");
+                printf("<input type=\"hidden\" name=\"sorted\" value=\"0\"/>\n");
+                printf("<input type=\"hidden\" name=\"name\" value=\"choose\"/>\n");
+                printf("<input type=\"submit\" value=\"choose\"/>\n");
+                printf("</form>\n");
+            }
+        }
+    }
+    else if (strcmp(flag, "-post") == 0)
+    {
+        if (argc < 6)
+        {
+            printf("Sorry incorrect number of arguments\n");
+        }
+        else
+        {
+            char q[2000];
+            char username[80];
+            char stream[80];
+            char date[80];
+            char message[1000];
+
+            strcpy(username, argv[2]);
+            strcpy(stream, argv[3]);
+            strcpy(date, argv[4]);
+            strcpy(message, argv[5]);
+
+            sprintf(q, "SELECT * from users WHERE name='%s' and stream='%s'", username, stream);
+            if(mysql_query(con,q))
+            {
+                char err[80];
+                sprintf(err, "Error: stream does not exist could not complete your operation");
+                error(err, con, 1);
+            }
+
+            result = mysql_store_result(con);
+            if (!result) error("Failed to store result", con, 1);
+
+            int rows = mysql_num_rows(result);
+            if (rows == 0)
+            {
+                printf("Error you do not have permission to post to that stream\n");
+            }
+            else
+            {
+                sprintf(q, "insert into posts values('%s', '%s', '%s', '%s')", username, date, message , stream);
+                if(mysql_query(con,q))
+                {
+                    char err[80];
+                    sprintf(err, "Failed to insert post");
+                    error(err, con, 1);
+                }
+                printf("The post has been submitted!\n");
+            }
         }
     }
     else if (strcmp(flag, "-addauthor") == 0)
     {
-        char q[80];
-        char username[80];
-        char stream[80];
-        strcpy(username, argv[2]);
-        strcpy(stream, argv[3]);
-        char * create[] = {
-            "create table if not exists users (name varchar(40), stream varchar(200), msg_read int)",
-            "create table if not exists posts (name varchar(40), date varchar(40), message varchar(255), stream varchar(40))",
-            "create table if not exists streams (name varchar(40))"  };
-
-        for (i = 0; i < 3; i++)
+        if (argc != 4)
         {
-            if(mysql_query(con,create[i]))
+            printf("Sorry incorrect number of arguments\n");
+        }
+        else
+        {
+            char q[80];
+            char username[80];
+            char stream[80];
+            strcpy(username, argv[2]);
+            strcpy(stream, argv[3]);
+            char * create[] = {
+                "create table if not exists users (name varchar(40), stream varchar(200), msg_read int)",
+                "create table if not exists posts (name varchar(40), date varchar(40), message varchar(255), stream varchar(40))",
+                "create table if not exists streams (name varchar(40))"  };
+
+            for (i = 0; i < 3; i++)
             {
-                char err[80];
-                sprintf(err, "Could not create table");
-                error(err, con);
+                if(mysql_query(con,create[i]))
+                {
+                    char err[80];
+                    sprintf(err, "Could not create table");
+                    error(err, con, 1);
+                }
             }
-        }
 
-        sprintf(q, "SELECT * FROM streams WHERE name='%s'", stream);
-        if(mysql_query(con,q))
-        {
-            char err[80];
-            sprintf(err, "Could not fetch streams");
-            error(err, con);
-        }
-
-        result = mysql_store_result(con);
-        if (!result)
-            error("Failed to store result", con);
-
-        int rows = mysql_num_rows(result);
-        if (rows == 0)
-        {
-            sprintf(q, "insert into streams values('%s')", stream);
+            sprintf(q, "SELECT * FROM streams WHERE name='%s'", stream);
             if(mysql_query(con,q))
             {
                 char err[80];
                 sprintf(err, "Could not fetch streams");
-                error(err, con);
+                error(err, con, 1);
             }
-        }
 
-        /* make username a actual var */
-        sprintf(q, "SELECT * FROM users WHERE name='%s' and stream='%s'", username, stream);
-        if(mysql_query(con,q))
-        {
-            char err[80];
-            sprintf(err, "Could not fetch User");
-            error(err, con);
-        }
+            result = mysql_store_result(con);
+            if (!result)
+                error("Failed to store result", con, 1);
 
-        result = mysql_store_result(con);
-        if (!result) error("Failed to store result", con);
+            int rows = mysql_num_rows(result);
+            if (rows == 0)
+            {
+                sprintf(q, "insert into streams values('%s')", stream);
+                if(mysql_query(con,q))
+                {
+                    char err[80];
+                    sprintf(err, "Could not fetch streams");
+                    error(err, con, 1);
+                }
+            }
 
-        rows = mysql_num_rows(result);
-        if (rows == 0)
-        {
-            sprintf(q, "insert into users values ('%s', '%s', 0)", username, stream);
+            /* make username a actual var */
+            sprintf(q, "SELECT * FROM users WHERE name='%s' and stream='%s'", username, stream);
             if(mysql_query(con,q))
             {
                 char err[80];
-                sprintf(err, "Could not give user permission");
-                error(err, con);
+                sprintf(err, "Could not fetch User");
+                error(err, con, 1);
             }
-            printf("%s was succesfuly added to %s\n", username, stream);
-        }
-        else
-        {
-            printf("error: %s already in %s\n", username, stream);
+
+            result = mysql_store_result(con);
+            if (!result) error("Failed to store result", con, 1);
+
+            rows = mysql_num_rows(result);
+            if (rows == 0)
+            {
+                sprintf(q, "insert into users values ('%s', '%s', 0)", username, stream);
+                if(mysql_query(con,q))
+                {
+                    char err[80];
+                    sprintf(err, "Could not give user permission");
+                    error(err, con, 1);
+                }
+                printf("%s was succesfuly added to %s\n", username, stream);
+            }
+            else
+            {
+                printf("error: %s already in %s\n", username, stream);
+            }
         }
 
     }
     else if (strcmp(flag, "-removeA") == 0)
     {
-        char username[80];
-        char stream[80];
-        char q[200];
-        strcpy(username, argv[2]);
-        strcpy(stream, argv[3]);
-
-        sprintf(q, "SELECT * FROM users WHERE name='%s' and stream='%s'", username, stream);
-        if(mysql_query(con,q))
+        if (argc != 4)
         {
-            char err[80];
-            sprintf(err, "Could not fetch User");
-            error(err, con);
+            printf("Sorry incorrect number of arguments\n");
         }
-
-        result = mysql_store_result(con);
-        if (!result) error("Failed to store result", con);
-
-        int rows = mysql_num_rows(result);
-        if (rows == 0)
-            printf("Error: could not remove %s from %s because no record exists\n", username, stream);
         else
         {
-            sprintf(q, "DELETE FROM users WHERE name='%s' and stream='%s'", username, stream);
+            char username[80];
+            char stream[80];
+            char q[200];
+            strcpy(username, argv[2]);
+            strcpy(stream, argv[3]);
+
+            sprintf(q, "SELECT * FROM users WHERE name='%s' and stream='%s'", username, stream);
             if(mysql_query(con,q))
             {
                 char err[80];
-                sprintf(err, "Could not delete User");
-                error(err, con);
+                sprintf(err, "Could not fetch User");
+                error(err, con, 1);
             }
-            printf("%s was removed succesfuly from %s\n", username, stream);
+
+            result = mysql_store_result(con);
+            if (!result) error("Failed to store result", con, 1);
+
+            int rows = mysql_num_rows(result);
+            if (rows == 0)
+                printf("Error: could not remove %s from %s because no record exists\n", username, stream);
+            else
+            {
+                sprintf(q, "DELETE FROM users WHERE name='%s' and stream='%s'", username, stream);
+                if(mysql_query(con,q))
+                {
+                    char err[80];
+                    sprintf(err, "Could not delete User");
+                    error(err, con, 1);
+                }
+                printf("%s was removed succesfuly from %s\n", username, stream);
+            }
         }
 
     }
@@ -554,7 +626,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[])
         printf("-clear: empties the tables\n");
         printf("-reset: deletes the tables\n");
         printf("-posts: prints out all the posts\n");
-        printf("-users: prints out all the users");
+        printf("-users: prints out all the users\n");
         printf("-streams: prints out all the streams\n");
 
     }
@@ -576,12 +648,12 @@ int main(int argc, char const *argv[]) {
     {
         char err[250];
         sprintf(err, "Error: unable to connect to %s", HOST);
-        error(err, &connection);
+        error(err, &connection, 0);
     }
 
     char action[50];
     strcpy(action, argv[1]);
-    performAction(action, &connection, argv);
+    performAction(action, &connection, argv, argc);
 
     mysql_close(&connection);
 

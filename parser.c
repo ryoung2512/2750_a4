@@ -54,7 +54,7 @@ void freeArrayElements(char ** characteristics, int position)
 
 void readFile(FILE * input, char * filename, char ** arguments, int args)
 {
-    startFile("Rhys's A3 Assignment For 2750");
+    startFile("Rhys's A4 Assignment For 2750");
     char ** characteristics = malloc(sizeof(char *) * 20);
     int bracketCount = 0, escaped = 0, count = 0, inString = 0, position = 0, firstFound = 0;
     char last = 0, current, type = 0, next = 0;
