@@ -36,7 +36,6 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
 {
     MYSQL_RES * result;
     MYSQL_ROW row;
-    MYSQL_FIELD * field;
 
     int i;
     char * tables[] = {"users", "posts", "streams"};
@@ -101,6 +100,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
                 printf("Message: %s\n\n", row[2]);
             }
         }
+        mysql_free_result(result);
     } /* prints out users */
     else if (strcmp(flag, "-users") == 0)
     {
@@ -123,6 +123,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
             printf("There are no users to display\n");
         else
             while((row = mysql_fetch_row(result))) printf("%s\n", row[0]);
+        mysql_free_result(result);
 
     } /*prints out streams */
     else if (strcmp(flag, "-streams") == 0)
@@ -146,6 +147,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
             printf("There are no streams to display\n");
         else
             while((row = mysql_fetch_row(result))) printf("%s\n", row[0]);
+        mysql_free_result(result);
     }
     else if (strcmp(flag, "-updateR") == 0)
     {
@@ -206,6 +208,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
                         strcat(q, " or ");
                     i++;
                 }
+                mysql_free_result(result);
                 char lim[40];
                 sprintf(lim, " LIMIT %d,%d", atoi(count), atoi(limit));
                 strcat(q, lim);
@@ -231,6 +234,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
                     printf("%s\n", row[3]);
                 }
             }
+            mysql_free_result(result);
         }
     }
     else if (strcmp(flag, "-getRead") == 0)
@@ -270,6 +274,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
                 }
                 printf("%d", count);
             }
+            mysql_free_result(result);
         }
     }
     else if (strcmp(flag, "-lPosts") == 0)
@@ -312,6 +317,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
                 char lim[40];
                 sprintf(lim, " LIMIT %d", l);
                 strcat(q, lim);
+                mysql_free_result(result);
             }
             else
             {
@@ -333,6 +339,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
                 printf("Date: %s\n", row[1]);
                 printf("Message: %s\n", row[2]);
             }
+            mysql_free_result(result);
         }
     }
     else if (strcmp(flag, "-pCount") == 0)
@@ -374,7 +381,9 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
 
                     int rows = mysql_num_rows(r);
                     count += rows;
+                    mysql_free_result(r);
                 }
+                mysql_free_result(result);
             }
             else
             {
@@ -390,6 +399,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
 
                 int rows = mysql_num_rows(result);
                 count += rows;
+                mysql_free_result(result);
             }
             printf("%d", count);
         }
@@ -444,6 +454,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
                 printf("<input type=\"submit\" value=\"choose\"/>\n");
                 printf("</form>\n");
             }
+            mysql_free_result(result);
         }
     }
     else if (strcmp(flag, "-post") == 0)
@@ -492,6 +503,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
                 }
                 printf("The post has been submitted!\n");
             }
+            mysql_free_result(result);
         }
     }
     else if (strcmp(flag, "-addauthor") == 0)
@@ -545,6 +557,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
                     error(err, con, 1);
                 }
             }
+            mysql_free_result(result);
 
             /* make username a actual var */
             sprintf(q, "SELECT * FROM users WHERE name='%s' and stream='%s'", username, stream);
@@ -568,12 +581,13 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
                     sprintf(err, "Could not give user permission");
                     error(err, con, 1);
                 }
-                printf("%s was succesfuly added to %s\n", username, stream);
+                printf("%s was succesfuly added to %s<br>", username, stream);
             }
             else
             {
-                printf("error: %s already in %s\n", username, stream);
+                printf("error: %s already in %s<br>", username, stream);
             }
+            mysql_free_result(result);
         }
 
     }
@@ -604,7 +618,7 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
 
             int rows = mysql_num_rows(result);
             if (rows == 0)
-                printf("Error: could not remove %s from %s because no record exists\n", username, stream);
+                printf("Error: could not remove %s from %s because no record exists<br>", username, stream);
             else
             {
                 sprintf(q, "DELETE FROM users WHERE name='%s' and stream='%s'", username, stream);
@@ -614,8 +628,9 @@ void performAction(char * flag, MYSQL * con, char const *argv[], int argc)
                     sprintf(err, "Could not delete User");
                     error(err, con, 1);
                 }
-                printf("%s was removed succesfuly from %s\n", username, stream);
+                printf("%s was removed succesfuly from %s<br>", username, stream);
             }
+            mysql_free_result(result);
         }
 
     }
@@ -656,6 +671,7 @@ int main(int argc, char const *argv[]) {
     performAction(action, &connection, argv, argc);
 
     mysql_close(&connection);
+    mysql_library_end();
 
     return 0;
 }
